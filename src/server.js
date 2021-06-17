@@ -47,6 +47,37 @@ app.post('/categories', async (req, res) => {
     }
 });
 
+app.get('/games', async (req, res) => {
 
+});
+
+app.post('/games', async (req, res) => {
+    const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
+    console.log(stockTotal)
+
+    try {
+        
+        if (isNaN(stockTotal) || isNaN(categoryId) || isNaN(pricePerDay)) {
+            return res.sendStatus(400);
+        }
+
+        if(name.length === 0 || stockTotal <= 0 || pricePerDay <= 0) {
+            return res.sendStatus(400)
+        }
+
+        const validateCategory = await connection.query('SELECT * FROM categories WHERE categoryId = $1", [categoryId]');
+
+        if(validateCategory) {
+            const game = await connection.query('INSERT INTO games (name, image, "stockTotal", "categoryId", "pricePerDay") VALUES ($1, $2, $3, $4, $5)', [name, image, stockTotal, categoryId, pricePerDay]);
+            res.sendStatus(201);
+        } else {
+            res.sendStatus(400);
+        }
+        
+    } catch(e) {
+        console.log(e);
+        res.sendStatus(400);
+    }
+});
 
 app.listen(4000, () => console.log("Server rodando na 4000"));
