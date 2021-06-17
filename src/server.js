@@ -49,11 +49,23 @@ app.post('/categories', async (req, res) => {
 });
 
 app.get('/games', async (req, res) => {
+
     try { 
-        const games = await connection.query("SELECT * FROM games");
-        res.send(games.rows)
+        const { name } = req.query;
+        let filteredName;
+
+        if(name) {
+            filteredName = name[0].toUpperCase();   
+        } else {
+            filteredName = null;
+        }              
+            
+		const querySettings = filteredName ? `${filteredName}%` : "%";              
+		const games = await connection.query("SELECT * FROM games WHERE name LIKE $1", [querySettings]);
+		res.send(games.rows);        
     } catch(e){
-        console.log(e)        
+        console.log(e)  
+        res.sendStatus(400);
     }
 });
 
@@ -93,5 +105,7 @@ app.post('/games', async (req, res) => {
         res.sendStatus(400);
     }
 });
+
+
 
 app.listen(4000, () => console.log("Server rodando na 4000"));
