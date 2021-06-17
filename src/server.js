@@ -34,9 +34,10 @@ app.post('/categories', async (req, res) => {
     } 
     
     try { 
-        const validateName = await connection.query("SELECT * FROM categories WHERE name = $1", [name]);
-        if(validateName){
-            return res.sendStatus(409);
+        const existingName = await connection.query('SELECT * FROM categories WHERE name = $1', [name]);
+        
+        if(existingName.rows.length !== 0){                        
+            res.sendStatus(409);
         } else {
             await connection.query("INSERT INTO categories (name) VALUES ($1)", [name]);        
             res.sendStatus(201);
@@ -48,7 +49,12 @@ app.post('/categories', async (req, res) => {
 });
 
 app.get('/games', async (req, res) => {
-
+    try { 
+        const games = await connection.query("SELECT * FROM games");
+        res.send(games.rows)
+    } catch(e){
+        console.log(e)        
+    }
 });
 
 app.post('/games', async (req, res) => {
@@ -58,24 +64,32 @@ app.post('/games', async (req, res) => {
     try {
         
         if (isNaN(stockTotal) || isNaN(categoryId) || isNaN(pricePerDay)) {
+            console.log('erro 1')
             return res.sendStatus(400);
         }
 
         if(name.length === 0 || stockTotal <= 0 || pricePerDay <= 0) {
+            console.log('erro 2')
             return res.sendStatus(400)
         }
 
-        const validateCategory = await connection.query('SELECT * FROM categories WHERE categoryId = $1", [categoryId]');
+        const existentCategory = await connection.query('SELECT * FROM categories WHERE id = $1', [categoryId]);
+        const existingName = await connection.query('SELECT * FROM games WHERE name = $1', [name]);
 
-        if(validateCategory) {
-            const game = await connection.query('INSERT INTO games (name, image, "stockTotal", "categoryId", "pricePerDay") VALUES ($1, $2, $3, $4, $5)', [name, image, stockTotal, categoryId, pricePerDay]);
-            res.sendStatus(201);
+        if(existentCategory.rows.length === 0) {
+            console.log('erro 3')
+            return res.sendStatus(400);
+        } if (existingName.rows.length !== 0) {
+            console.log('erro 4')
+            return res.sendStatus(409);
         } else {
-            res.sendStatus(400);
+            await connection.query('INSERT INTO games (name, image, "stockTotal", "categoryId", "pricePerDay") VALUES ($1, $2, $3, $4, $5)', [name, image, stockTotal, categoryId, pricePerDay]);
+            return res.sendStatus(201);            
         }
         
     } catch(e) {
         console.log(e);
+        console.log('erro 5')
         res.sendStatus(400);
     }
 });
