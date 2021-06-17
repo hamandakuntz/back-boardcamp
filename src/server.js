@@ -1,6 +1,7 @@
 import express from 'express';
 import cors from 'cors';
 import pg from 'pg';
+import Joi from 'joi';
 
 const { Pool } = pg;
 
@@ -33,22 +34,29 @@ app.post('/categories', async (req, res) => {
         return res.sendStatus(400);
     } 
     
+    const userSchema = Joi.object({
+        name: Joi.string().required(),
+    });
+
     try { 
         const existingName = await connection.query('SELECT * FROM categories WHERE name = $1', [name]);
-        
+        const { error, value } = userSchema.validate(name);
+
         if(existingName.rows.length !== 0){                        
             res.sendStatus(409);
         } else {
-            await connection.query("INSERT INTO categories (name) VALUES ($1)", [name]);        
+            await connection.query("INSERT INTO categories (name) VALUES ($1)", [value]);        
             res.sendStatus(201);
         }
     } catch(e) {
         console.log(e);
-        res.sendStatus(400);
+        res.sendStatus(500);
     }
 });
 
 app.get('/games', async (req, res) => {
+
+    // falta inserir o categoryName
 
     try { 
         const { name } = req.query;
@@ -59,19 +67,19 @@ app.get('/games', async (req, res) => {
         } else {
             filteredName = null;
         }              
-            
+
 		const querySettings = filteredName ? `${filteredName}%` : "%";              
-		const games = await connection.query("SELECT * FROM games WHERE name LIKE $1", [querySettings]);
+		const games = await connection.query("SELECT * FROM games WHERE name LIKE $1", [querySettings]);                
+        console.log(games.rows);
 		res.send(games.rows);        
     } catch(e){
         console.log(e)  
-        res.sendStatus(400);
+        res.sendStatus(500);
     }
 });
 
 app.post('/games', async (req, res) => {
     const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
-    console.log(stockTotal)
 
     try {
         
@@ -102,9 +110,55 @@ app.post('/games', async (req, res) => {
     } catch(e) {
         console.log(e);
         console.log('erro 5')
-        res.sendStatus(400);
+        res.sendStatus(500);
     }
 });
+
+app.get('/customers', async (req, res) => {
+      
+    try { 
+        const { cpf } = req.query;   
+        const querySettings = cpf ? `${cpf}%` : "%";
+        const customers = await connection.query("SELECT * FROM customers WHERE cpf LIKE $1", [querySettings]);
+        res.send(customers.rows)        
+    } catch(e){
+        console.log(e)        
+    }
+});
+
+app.post('/customers', async (req, res) => {
+
+    const customersSchema = Joi.object({
+        name: Joi.string().required(),    
+        phone: Joi.string().pattern(/^[0-9]{10,11}$/),              
+        cpf: Joi.string().pattern(/^[0-9]{11}$/), 
+        birthday: Joi.date().iso().less('now'),  
+    });
+
+    const validation = customersSchema.validate(req.body);
+
+    if(!validation.error) {
+        const { name, phone, cpf, birthday } = req.body;        
+
+        try {
+            const existentCPF = await connection.query('SELECT * FROM customers WHERE cpf = $1', [cpf]);
+
+            if (existentCPF.rows.length === 0) {
+                await connection.query('INSERT INTO customers (name, phone, cpf, birthday) VALUES ($1, $2, $3, $4)', [name, phone, cpf, birthday]);
+                res.sendStatus(201);
+            } else {
+                res.sendStatus(409);
+            }
+            
+        } catch (e) {
+            console.log(e);
+            res.sendStatus(500);
+        }
+    } else {
+        res.sendStatus(400);
+    }    
+});
+
 
 
 
