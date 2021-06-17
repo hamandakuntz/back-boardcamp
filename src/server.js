@@ -126,6 +126,26 @@ app.get('/customers', async (req, res) => {
     }
 });
 
+app.get('/customers/:id', async (req, res) => {
+    const id = parseInt(req.params.id); 
+
+    try { 
+        
+        const existingId = await connection.query("SELECT * FROM customers WHERE id = $1", [id]);
+
+        if (existingId.rows.length !== 0) {
+            const customers = await connection.query("SELECT * FROM customers WHERE id = $1", [id]);
+            return res.send(customers.rows)  
+        } else {
+            return res.sendStatus(404);
+        }
+
+    } catch(e){
+        console.log(e)  
+        res.sendStatus(500);
+    }
+});
+
 app.post('/customers', async (req, res) => {
 
     const customersSchema = Joi.object({
