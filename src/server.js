@@ -163,7 +163,7 @@ app.get("/customers/:id", async (req, res) => {
         "SELECT * FROM customers WHERE id = $1",
         [id]
       );
-      return res.send(customers.rows);
+      return res.send(customers.rows[0]);
     } else {
       return res.sendStatus(404);
     }
@@ -227,18 +227,18 @@ app.put("/customers/:id", async (req, res) => {
 
     try {
       const existentCPF = await connection.query(
-        "SELECT * FROM customers WHERE cpf = $1",
-        [cpf]
+        "SELECT * FROM customers WHERE cpf LIKE $1 AND id <> $2",
+        [cpf, id]
       );
 
-      if (existentCPF.rows.length === 0) {
-        await connection.query(
+      if (existentCPF.rows.length !== 0) {
+        return res.sendStatus(409);
+      } else {
+        const response = await connection.query(
           "UPDATE customers SET name = $1, phone = $2, cpf = $3, birthday = $4 WHERE id = $5",
           [name, phone, cpf, birthday, id]
         );
-        res.sendStatus(201);
-      } else {
-        res.sendStatus(409);
+        res.sendStatus(201);        
       }
     } catch (e) {
       console.log(e);
