@@ -404,7 +404,7 @@ app.post("/rentals/:id/return", async (req, res) => {
 
   const gamePrice = await connection.query(
     `
-        SELECT "pricePerDay" FROM games WHERE id = $1`,
+      SELECT "pricePerDay" FROM games WHERE id = $1`,
     [rent.rows[0].gameId]
   );
 
@@ -427,7 +427,7 @@ app.post("/rentals/:id/return", async (req, res) => {
     let delayFee = null;
     console.log(calculateDays)
 
-    if(calculateDays < 0 ) {
+    if(calculateDays <= 0 ) {
         delayFee = null;
     } else {
         delayFee = calculateDays * totalPrice;
