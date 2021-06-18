@@ -418,7 +418,7 @@ app.post("/rentals/:id/return", async (req, res) => {
       return res.sendStatus(400);
     }
 
-    const returnDate = dayjs('2021-06-24');
+    const returnDate = dayjs();
     const daysRented = rent.rows[0].daysRented;
     const totalPrice = gamePrice.rows[0].pricePerDay;
     const rentDate = rent.rows[0].rentDate;
@@ -456,10 +456,6 @@ app.post("/rentals/:id/return", async (req, res) => {
 app.delete("/rentals/:id", async (req, res) => {
     const id = req.params.id;
 
-    if(!id) {
-        return res.sendStatus(404);
-    }
-
     try {
         const validateExistingRent = await connection.query(
             `
@@ -467,6 +463,10 @@ app.delete("/rentals/:id", async (req, res) => {
             `,
             [id]
         ); 
+
+        if(!validateExistingRent.rows[0]) {
+            return res.sendStatus(404)
+        }
 
         if (validateExistingRent.rows[0].returnDate !== null) {
             return res.sendStatus(400)
