@@ -25,8 +25,8 @@ app.get("/categories", async (req, res) => {
   try {
     const categories = await connection.query("SELECT * FROM categories");
     res.send(categories.rows);
-  } catch (e) {
-    console.log(e);
+  } catch {
+    res.sendStatus(500);
   }
 });
 
@@ -56,8 +56,7 @@ app.post("/categories", async (req, res) => {
       ]);
       res.sendStatus(201);
     }
-  } catch (e) {
-    console.log(e);
+  } catch {   
     res.sendStatus(500);
   }
 });
@@ -82,11 +81,9 @@ app.get("/games", async (req, res) => {
         WHERE games.name 
         LIKE $1`,
       [querySettings]
-    );
-    console.log(games.rows);
+    );  
     res.send(games.rows);
-  } catch (e) {
-    console.log(e);
+  } catch (e) {   
     res.sendStatus(500);
   }
 });
@@ -95,13 +92,11 @@ app.post("/games", async (req, res) => {
   const { name, image, stockTotal, categoryId, pricePerDay } = req.body;
 
   try {
-    if (isNaN(stockTotal) || isNaN(categoryId) || isNaN(pricePerDay)) {
-      console.log("erro 1");
+    if (isNaN(stockTotal) || isNaN(categoryId) || isNaN(pricePerDay)) {     
       return res.sendStatus(400);
     }
 
-    if (name.length === 0 || stockTotal <= 0 || pricePerDay <= 0) {
-      console.log("erro 2");
+    if (name.length === 0 || stockTotal <= 0 || pricePerDay <= 0) {     
       return res.sendStatus(400);
     }
 
@@ -114,12 +109,10 @@ app.post("/games", async (req, res) => {
       [name]
     );
 
-    if (existentCategory.rows.length === 0) {
-      console.log("erro 3");
+    if (existentCategory.rows.length === 0) {      
       return res.sendStatus(400);
     }
-    if (existingName.rows.length !== 0) {
-      console.log("erro 4");
+    if (existingName.rows.length !== 0) {      
       return res.sendStatus(409);
     } else {
       await connection.query(
@@ -128,9 +121,7 @@ app.post("/games", async (req, res) => {
       );
       return res.sendStatus(201);
     }
-  } catch (e) {
-    console.log(e);
-    console.log("erro 5");
+  } catch {    
     res.sendStatus(500);
   }
 });
@@ -145,7 +136,7 @@ app.get("/customers", async (req, res) => {
     );
     res.send(customers.rows);
   } catch (e) {
-    console.log(e);
+    res.sendStatus(404);
   }
 });
 
@@ -167,8 +158,7 @@ app.get("/customers/:id", async (req, res) => {
     } else {
       return res.sendStatus(404);
     }
-  } catch (e) {
-    console.log(e);
+  } catch {
     res.sendStatus(500);
   }
 });
@@ -201,8 +191,7 @@ app.post("/customers", async (req, res) => {
       } else {
         res.sendStatus(409);
       }
-    } catch (e) {
-      console.log(e);
+    } catch {     
       res.sendStatus(500);
     }
   } else {
@@ -240,8 +229,7 @@ app.put("/customers/:id", async (req, res) => {
         );
         res.sendStatus(201);        
       }
-    } catch (e) {
-      console.log(e);
+    } catch {
       res.sendStatus(500);
     }
   } else {
@@ -311,8 +299,7 @@ app.get("/rentals", async (req, res) => {
     });
 
     res.send(info2);
-  } catch (e) {
-    console.log(e);
+  } catch {    
     res.sendStatus(500);
   }
 });
@@ -348,8 +335,7 @@ app.post("/rentals", async (req, res) => {
     `,
       [gameId]
     );
-  } catch (e) {
-    console.log(e);
+  } catch {   
     return res.sendStatus(500);
   }
 
@@ -376,8 +362,7 @@ app.post("/rentals", async (req, res) => {
         ]
       );
       res.sendStatus(201);
-    } catch (e) {
-      console.log(e);
+    } catch  {     
       res.sendStatus(500);
     }
   } else {
@@ -425,17 +410,13 @@ app.post("/rentals/:id/return", async (req, res) => {
   
     let calculateDays = (returnDate.diff(rentDate, 'day') - daysRented);
     let delayFee = null;
-    console.log(calculateDays)
-
+    
     if(calculateDays <= 0 ) {
         delayFee = null;
     } else {
         delayFee = calculateDays * totalPrice;
     }
-    
-    
-    console.log(delayFee);
-
+         
     await connection.query(
       `UPDATE rentals SET "returnDate" = $1, "delayFee" = $2 WHERE id = $3`,
       [returnDate, delayFee, id]
@@ -447,8 +428,7 @@ app.post("/rentals/:id/return", async (req, res) => {
     );
 
     res.sendStatus(200);
-  } catch (e) {
-    console.log(e);
+  } catch {   
     res.sendStatus(500);
   }
 });
@@ -475,11 +455,25 @@ app.delete("/rentals/:id", async (req, res) => {
 		    return res.sendStatus(200)
         }
         
-    } catch (e) {
-        console.log(e);
-        res.sendStatus(500);
+    } catch {      
+      res.sendStatus(500);
     }
-
 });
 
-app.listen(4000, () => console.log("Server rodando na 4000"));
+
+app.get("/rentals/metrics", async (req, res) => {
+  let revenue = null;
+  let rentals = null;
+  let average = null;
+
+  try {
+    rentals = await connection.query(`
+    SELECT count(id) FROM rentals    
+    `)      
+  } catch {
+    res.sendStatus(500);
+  }
+});
+
+
+app.listen(4000);
