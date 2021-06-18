@@ -156,8 +156,8 @@ app.post('/customers', async (req, res) => {
 
     const customersSchema = Joi.object({
         name: Joi.string().required(),    
-        phone: Joi.string().pattern(/^[0-9]{10,11}$/).required(),              
-        cpf: Joi.string().pattern(/^[0-9]{11}$/).required(), 
+        phone: Joi.string().pattern(/^[0-9]{10,11}$/),              
+        cpf: Joi.string().pattern(/^[0-9]{11}$/), 
         birthday: Joi.date().iso().less('now'),  
     });
 
@@ -192,7 +192,7 @@ app.put('/customers/:id', async (req, res) => {
     const customersSchema = Joi.object({
         name: Joi.string().required(),    
         phone: Joi.string().pattern(/^[0-9]{10,11}$/),              
-        cpf: Joi.string().alphanum().length(11).pattern(/^[0-9]{11}$/), 
+        cpf: Joi.string().pattern(/^[0-9]{11}$/), 
         birthday: Joi.date().iso().less('now'),  
     });
 
@@ -220,10 +220,78 @@ app.put('/customers/:id', async (req, res) => {
     }    
 });
 
+app.get('/rentals', async (req, res) => {
+
+    const { customerId, gameId } = req.query;
+    const validateExistingQueryParam = !!customerId || !!gameId
+    let constructedQuery = "";
+    let queryArguments = [];
+  
+
+    if(validateExistingQueryParam) {
+        if(customerId && gameId) {
+            constructedQuery = `WHERE rentals."gameId" = $1 AND rentals."customerId" = $2`
+            queryArguments = [gameId, customerId]            
+        } else if(customerId) {
+            constructedQuery = `WHERE rentals."customerId" = $1`
+            queryArguments = [customerId]
+        } else {            
+            constructedQuery = `WHERE rentals."gameId" = $1`
+            queryArguments = [gameId]
+        }
+    } 
+
+
+    try {
+        const info = await connection.query(`
+        SELECT rentals.* , customers.name AS "customerName", 
+        games.name AS "gameName", games."categoryId", 
+        categories.name AS "categoryName"
+        FROM 
+        rentals JOIN customers 
+        ON customers.id = rentals."customerId"        
+        JOIN games 
+        ON rentals."gameId" = games.id   
+        JOIN categories  
+        ON games."categoryId" = categories.id 
+        ${constructedQuery} 
+        `, queryArguments);        
+
+        const info2 = info.rows.map(i => {
+            return ({
+                id: i.id,
+                customerId: i.customerId,
+                gameId: i.gameId,
+                rentDate: i.rentDate,
+                daysRented: i.daysRented,
+                returnDate: i.returnDate,
+                originalPrice: i.originalPrice,
+                delayFee: i.delayFee,
+                    customer: {
+                        id: i.customerId,
+                        name: i.customerName
+                    },
+                    game: {
+                        id: i.gameId,
+                        name: i.gameName,
+                        categoryId: i.categoryId,
+                        categoryName: i.categoryName
+                    }             
+            });
+        });
+    
+        res.send(info2);
+
+    } catch (e) {
+        console.log(e);
+        res.sendStatus(500);
+    }    
+});
+
 app.post('/rentals', async (req, res) => {
    const { customerId, gameId, daysRented } = req.body;   
    const rentDate = dayjs().format('YYYY-MM-DD');
-   const returnDate = dayjs().format('YYYY-MM-DD');
+   const returnDate = null;
    const delayFee = null;
    let getPricePerDay = null;
 
@@ -256,8 +324,8 @@ app.post('/rentals', async (req, res) => {
        console.log(e);
        return res.sendStatus(500);
     }
-       
-    if (openRents.rows.length > openRents.rows[0].stockTotal) { 
+           
+    if (openRents.rows.length >= openRents.rows[0]?.stockTotal) { 
         return res.sendStatus(400);
     } else if (validateExistingCustomer.rows.length !== 0 && validateExistingGame.rows.length !== 0 && daysRented > 0){       
             try {
