@@ -286,6 +286,7 @@ app.get("/rentals", async (req, res) => {
       queryArguments
     );
 
+    
     const info2 = info.rows.map((i) => {
       return {
         id: i.id,
@@ -321,27 +322,12 @@ app.post("/rentals", async (req, res) => {
   const rentDate = dayjs().format("YYYY-MM-DD");
   const returnDate = null;
   const delayFee = null;
-  let getPricePerDay = null;
 
-  try {
-    getPricePerDay = await connection.query(
-      `
-        SELECT games."pricePerDay", games.id, rentals."gameId"
-        FROM games JOIN rentals 
-        ON games.id = rentals."gameId"
-        WHERE games.id = $1
-        `,
-      [gameId]
-    );
-  } catch (e) {
-    console.log(e);
-    return res.sendStatus(500);
-  }
+  let pricePerDay = await connection.query(`SELECT "pricePerDay" FROM games WHERE id=$1`, [gameId]);
+  pricePerDay = pricePerDay.rows[0].pricePerDay;
 
-  const pricePerDay = getPricePerDay.rows[0]
-    ? getPricePerDay.rows[0].pricePerDay
-    : "";
-  const originalPrice = daysRented * pricePerDay;
+  const originalPrice = daysRented * pricePerDay; 
+
   const validateExistingCustomer = await connection.query(
     "SELECT * FROM customers WHERE id = $1",
     [customerId]
@@ -425,27 +411,27 @@ app.post("/rentals/:id/return", async (req, res) => {
       return res.sendStatus(400);
     }
 
-    const returnDate = dayjs().format("YYYY-MM-DD");
+    const returnDate = dayjs('2021-06-24');
     const daysRented = rent.rows[0].daysRented;
     const totalPrice = gamePrice.rows[0].pricePerDay;
     const rentDate = rent.rows[0].rentDate;
-    
+  
+    let calculateDays = (returnDate.diff(rentDate, 'day') - daysRented);
+    let delayFee = null;
+    console.log(calculateDays)
 
-    const date1 = dayjs('2019-01-25')
-    date1.diff('2018-06-05', 'month')
-
-    console.log(date1.diff(dayjs(), 'year'))
-    console.log(rentDate)
+    if(calculateDays < 0 ) {
+        delayFee = null;
+    } else {
+        delayFee = calculateDays * totalPrice;
+    }
     
-
-    let delayFee = (rentDate.diff(returnDate, 'day')) * totalPrice;
     
-    // dayjs().format("YYYY-MM-DD").diff(rentDate)) * totalPrice;
     console.log(delayFee);
 
     await connection.query(
       `UPDATE rentals SET "returnDate" = $1, "delayFee" = $2 WHERE id = $3`,
-      [dayjs(), delayFee, id]
+      [returnDate, delayFee, id]
     );
 
     await connection.query(
