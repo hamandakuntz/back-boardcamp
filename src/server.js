@@ -388,12 +388,19 @@ app.post("/rentals", async (req, res) => {
 app.post("/rentals/:id/return", async (req, res) => {
   const id = req.params.id;
 
+  
   const rent = await connection.query(
     `
     SELECT * FROM rentals WHERE id = $1    
     `,
     [id]
   );
+
+  const validateExistingRentalId = rent.rows[0];
+
+  if (!validateExistingRentalId) {
+    return res.sendStatus(404);
+  }
 
   const gamePrice = await connection.query(
     `
